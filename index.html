@@ -103,8 +103,8 @@ const DEFAULT_PRICE_LIST = [
 // ═══════════════════════════════════════════════
 let state = {
   activeTab: 'estimate',  // estimate | prices | settings
-  apiKey: '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',
-  apiKeySet: true,
+  apiKey: '',
+  apiKeySet: false,
   priceList: JSON.parse(JSON.stringify(DEFAULT_PRICE_LIST)),
   uploadedImage: null,  // { dataUrl, base64, mediaType, fileName }
   extraContext: '',
@@ -175,7 +175,7 @@ Be thorough and realistic. This is a high-end custom residential project.`;
 // API CALL
 // ═══════════════════════════════════════════════
 async function runAnalysis() {
-  if (!state.uploadedImage || !state.apiKey) return;
+  if (!state.uploadedImage || !state.apiKey) { if(!state.apiKey){state.error='Please enter your API key first.';render();} return; }
   state.stage = 'analyzing';
   state.error = null;
   render();
@@ -313,6 +313,7 @@ function renderTabs() {
   const tabs = [
     { id:'estimate', label:'ESTIMATE' },
     { id:'prices', label:'PRICE LIST' },
+    { id:'settings', label:'SETTINGS' },
   ];
   return `<div class="tab-bar">${tabs.map(t =>
     `<div class="tab ${state.activeTab===t.id?'active':''}" data-tab="${t.id}">${t.label}</div>`
@@ -321,6 +322,7 @@ function renderTabs() {
 
 function renderContent() {
   if (state.activeTab === 'prices') return renderPriceEditor();
+  if (state.activeTab === 'settings') return renderSettings();
   return renderEstimate();
 }
 
@@ -412,7 +414,15 @@ function renderUpload() {
       <textarea id="contextInput" class="input-field" style="min-height:72px;resize:vertical;line-height:1.5;font-size:11px" placeholder="e.g. Kitchen is approx 15x12, mudroom has two tall pantry cabinets...">${esc(state.extraContext)}</textarea>
       <p style="font-size:9px;color:var(--text4);margin-top:3px">Help the AI by noting room sizes or cabinet needs not obvious from the drawing.</p>
     </div>
-    <button class="btn-primary" id="analyzeBtn" style="width:100%;margin-top:18px">Analyze Blueprint &amp; Generate Estimate</button>`;
+    ${!state.apiKeySet ? `<div style="margin-top:18px;padding:14px;background:rgba(234,179,8,0.06);border:1px solid rgba(234,179,8,0.25);border-radius:8px">
+      <div style="font-size:11px;color:var(--yellow);font-weight:700;margin-bottom:6px">API Key Required</div>
+      <div style="font-size:10px;color:var(--text3);line-height:1.6;margin-bottom:10px">Enter your Anthropic API key to enable blueprint analysis. Get one free at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#60a5fa">console.anthropic.com</a></div>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="inlineKeyInput" class="input-field" placeholder="sk-ant-..." style="flex:1;font-size:11px">
+        <button class="btn" id="inlineSaveKey" style="padding:8px 16px;font-weight:600;color:var(--green);border-color:rgba(34,197,94,0.3)">Save</button>
+      </div>
+    </div>` : ''}
+    <button class="btn-primary" id="analyzeBtn" style="width:100%;margin-top:18px;${!state.apiKeySet?'opacity:0.4;cursor:not-allowed':''}">${!state.apiKeySet?'Enter API Key Above to Analyze':'Analyze Blueprint &amp; Generate Estimate'}</button>`;
   }
 
   const err = state.error ? `<div style="margin-top:14px;padding:9px 12px;background:#1a0a0a;border:1px solid #7f1d1d;border-radius:5px;font-size:10px;color:#f87171">${esc(state.error)}</div>` : '';
@@ -662,6 +672,18 @@ function attachEvents() {
     const key = document.getElementById('apiKeyInput').value.trim();
     if (key) { state.apiKey = key; state.apiKeySet = true; state.activeTab = 'estimate'; }
     render();
+  });
+
+  // Inline key save (on upload page)
+  const inlineSave = document.getElementById('inlineSaveKey');
+  if (inlineSave) inlineSave.addEventListener('click', () => {
+    const key = document.getElementById('inlineKeyInput').value.trim();
+    if (key) { state.apiKey = key; state.apiKeySet = true; }
+    render();
+  });
+  const inlineInput = document.getElementById('inlineKeyInput');
+  if (inlineInput) inlineInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const key = inlineInput.value.trim(); if(key){state.apiKey=key;state.apiKeySet=true;render();} }
   });
 
   // API key enter
